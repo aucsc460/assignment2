@@ -54,17 +54,12 @@ def generate_training_data(text, vocab, window_size=2):
         indices = [idx for idx in indices if idx != -1]  # get rid of words that're not in the vocabulary
 
         # Generate index pairs for the central and context words
-        for center_word_pos in range(len(indices)):
-
-            #For each key word, generate a range that determines the context word based on the window size.
             for w in range(-window_size, window_size + 1):
                 context_word_pos = center_word_pos + w # calculate the position of context word
 
                 # check if the position of context word is available
                 # skip this turn if not
-                if context_word_pos < 0 or context_word_pos >= len(indices) or center_word_pos == context_word_pos:
                     continue
-                training_data.append((indices[center_word_pos], indices[context_word_pos]))
             #end for w
         #end for center_word_pos
     #output a list of data pairs,
