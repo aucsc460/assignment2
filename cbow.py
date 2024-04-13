@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.functional as F
 import torch.optim as optim # to use the Optimizer class to optimize code
 import pandas as pd
+import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
 
 # Functions used for preprocessing data and generating training data
@@ -55,7 +56,7 @@ def generate_training_data(text, window_size=2):
     return training_data
 
 #end generate_training_data
-
+import torch.nn.init as init
 # Training the model
 class CBOW(nn.Module):
     def __init__(self, vocab, embedding_dim=100):
@@ -65,8 +66,6 @@ class CBOW(nn.Module):
         self.embedding_size = embedding_dim
         # Layers of the CBOW
         self.embedding = nn.Embedding(self.vocab_size, self.embedding_size)
-        
-        
 
     def forward(self):
         pass
@@ -117,3 +116,37 @@ print('y_train first three examples: ', y_train[:3])
 
 # Creating the CBOW model using the CBOW class
 # cbow = CBOW(vocab=vocab_list)
+
+
+# Create one hot vectors for a given sample ([context], target)
+def one_hot_mama(context, target, vocab_dict):
+    # Convert vocab_dict keys (words) to a list
+    vocab_list = list(vocab_dict.keys())
+
+    # Initialize a dictionary to map words to indices
+    word_to_index = {word: i for i, word in enumerate(vocab_list)}
+
+    # Convert context and target to indices using the word_to_index mapping
+    context_indices = [word_to_index.get(word, -1) for word in context]
+    target_index = word_to_index.get(target, -1)
+
+    # Convert indices to PyTorch tensors, excluding out-of-vocabulary words (-1)
+    context_tensor = torch.LongTensor([index for index in context_indices if index != -1])
+    target_tensor = torch.LongTensor([target_index]) if target_index != -1 else None
+
+    # Use torch.nn.functional.one_hot to create one-hot vectors
+    context_one_hot = torch.nn.functional.one_hot(context_tensor, num_classes=len(vocab_list))
+    target_one_hot = torch.nn.functional.one_hot(target_tensor, num_classes=len(vocab_list)) if target_tensor is not None else None
+
+    return context_one_hot, target_one_hot
+
+    
+context_one_hot, target_one_hot = one_hot_mama(X_train[0], y_train[0], vocab_list)
+print("Context one-hot vector:", context_one_hot)
+print("Target one-hot vector:", target_one_hot)
+
+
+
+
+
+
