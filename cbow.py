@@ -38,29 +38,17 @@ def process_data(data):
     return text, vector.vocabulary_
 #end process_data
 
+# NOTE: I CHANGED THIS CODE SO I COULD WORK ON CONSTRUCTING THE ARCHITECTURE FOR CBOW
 def generate_training_data(text, vocab, window_size=2):
     training_data = []
     for sentence in text:
         words = sentence.split()  # split words in processed text
-        indices = [vocab.get(word, -1) for word in words if word in vocab]  # turn word into index
-        indices = [idx for idx in indices if idx != -1]  # get rid of words that're not in the vocabulary
-
-        # Generate index pairs for the central and context words
-        for center_word_pos in range(len(indices)):
-
-            #For each key word, generate a range that determines the context word based on the window size.
-            for w in range(-window_size, window_size + 1):
-                context_word_pos = center_word_pos + w # calculate the position of context word
-
-                # check if the position of context word is available
-                # skip this turn if not
-                if context_word_pos < 0 or context_word_pos >= len(indices) or center_word_pos == context_word_pos:
-                    continue
-                training_data.append((indices[center_word_pos], indices[context_word_pos]))
-            #end for w
-        #end for center_word_pos
-    #output a list of data pairs,
-    #[(index of central word, index of context word),( , ), ...]
+        for i in range(len(words)):
+            context_words_before = words[max(0, i - window_size) : i] # getting the context words before the target word at i
+            context_words_after = words[i + 1 : min(len(words), i + window_size + 1)] # getting the context words after the target word at i
+            context = context_words_before + context_words_after
+            target = words[i]
+            training_data.append((context, target)) # appending the training sample to the training data
     return training_data
 
 #end generate_training_data
@@ -104,8 +92,5 @@ df = pd.read_csv('shakespeare.txt', sep='\t', header=None, names=['Line'])
 processed_text, vocab_list = process_data(df['Line']) #[(index of central word, index of context word),( , ), ...]
 
 x_train = generate_training_data(text=processed_text, vocab=vocab_list)
-
-
-#print('Processed Text: ', processed_text)
-#print('Vocab List: ', vocab_list)
-print('X_train: ', x_train)
+print('Processed text first line: ', processed_text[0].split())
+print('X_train: ', x_train[:5]) 
