@@ -39,7 +39,7 @@ def process_data(data):
 #end process_data
 
 # NOTE: I CHANGED THIS CODE SO I COULD WORK ON CONSTRUCTING THE ARCHITECTURE FOR CBOW
-def generate_training_data(text, vocab, window_size=2):
+def generate_training_data(text, window_size=2):
     training_data = []
     for sentence in text:
         words = sentence.split()  # split words in processed text
@@ -89,8 +89,15 @@ def generate_scatter_plot(data):
 
 # Reading file and creating pandas dataframe
 df = pd.read_csv('shakespeare.txt', sep='\t', header=None, names=['Line'])
-processed_text, vocab_list = process_data(df['Line']) #[(index of central word, index of context word),( , ), ...]
+processed_text, vocab_list = process_data(df['Line'])
 
-x_train = generate_training_data(text=processed_text, vocab=vocab_list)
+training_data = generate_training_data(text=processed_text)
+
+X_train = [data[0] for data in training_data]
+y_train = [data[1] for data in training_data]
+
 print('Processed text first line: ', processed_text[0].split())
-print('X_train: ', x_train[:5]) 
+print('first six examples of training data: ', training_data[:6]) 
+
+print('X_train first three examples: ', X_train[:3])
+print('y_train first three examples: ', y_train[:3])
