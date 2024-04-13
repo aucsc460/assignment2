@@ -1,5 +1,8 @@
-# imports
-# import torch
+# IMPORTS
+import torch
+import torch.nn as nn
+import torch.functional as F
+import torch.optim as optim # to use the Optimizer class to optimize code
 import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 
@@ -38,37 +41,32 @@ def process_data(data):
     return text, vector.vocabulary_
 #end process_data
 
-def generate_training_data(text, vocab, window_size=2):
+# NOTE: I CHANGED THIS CODE SO I COULD WORK ON CONSTRUCTING THE ARCHITECTURE FOR CBOW
+def generate_training_data(text, window_size=2):
     training_data = []
     for sentence in text:
         words = sentence.split()  # split words in processed text
-        indices = [vocab.get(word, -1) for word in words if word in vocab]  # turn word into index
-        indices = [idx for idx in indices if idx != -1]  # get rid of words that're not in the vocabulary
-
-        # Generate index pairs for the central and context words
-        for center_word_pos in range(len(indices)):
-
-            #For each key word, generate a range that determines the context word based on the window size.
-            for w in range(-window_size, window_size + 1):
-                context_word_pos = center_word_pos + w # calculate the position of context word
-
-                # check if the position of context word is available
-                # skip this turn if not
-                if context_word_pos < 0 or context_word_pos >= len(indices) or center_word_pos == context_word_pos:
-                    continue
-                training_data.append((indices[center_word_pos], indices[context_word_pos]))
-            #end for w
-        #end for center_word_pos
-    #output a list of data pairs,
-    #[(index of central word, index of context word),( , ), ...]
+        for i in range(len(words)):
+            context_words_before = words[max(0, i - window_size) : i] # getting the context words before the target word at i
+            context_words_after = words[i + 1 : min(len(words), i + window_size + 1)] # getting the context words after the target word at i
+            context = context_words_before + context_words_after
+            target = words[i]
+            training_data.append((context, target)) # appending the training sample to the training data
     return training_data
 
 #end generate_training_data
 
 # Training the model
-class CBOW():
-    def __init__(self, vocab_size, embedding_dim):
-        pass
+class CBOW(nn.Module):
+    def __init__(self, vocab, embedding_dim=100):
+        super(CBOW, self).__init__()
+        self.vocab_list = vocab
+        self.vocab_size = len(vocab)
+        self.embedding_size = embedding_dim
+        # Layers of the CBOW
+        self.embedding = nn.Embedding(self.vocab_size, self.embedding_size)
+        
+        
 
     def forward(self):
         pass
@@ -101,11 +99,21 @@ def generate_scatter_plot(data):
 
 # Reading file and creating pandas dataframe
 df = pd.read_csv('shakespeare.txt', sep='\t', header=None, names=['Line'])
-processed_text, vocab_list = process_data(df['Line']) #[(index of central word, index of context word),( , ), ...]
+processed_text, vocab_list = process_data(df['Line'])
 
-x_train = generate_training_data(text=processed_text, vocab=vocab_list)
+# Generating the training data
+training_data = generate_training_data(text=processed_text)
 
+# Splitting the training data into X and y pairs
+X_train = [data[0] for data in training_data]
+y_train = [data[1] for data in training_data]
 
-#print('Processed Text: ', processed_text)
-#print('Vocab List: ', vocab_list)
-print('X_train: ', x_train)
+# NOTE: TESTING TO ENSURE THAT DATA ACTUALLY WORKS - will be deleted later
+print('Processed text first line: ', processed_text[0].split())
+print('first six examples of training data: ', training_data[:6]) 
+
+print('X_train first three examples: ', X_train[:3])
+print('y_train first three examples: ', y_train[:3])
+
+# Creating the CBOW model using the CBOW class
+# cbow = CBOW(vocab=vocab_list)
