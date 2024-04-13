@@ -1,5 +1,8 @@
-# imports
-# import torch
+# IMPORTS
+import torch
+import torch.nn as nn
+import torch.functional as F
+import torch.optim as optim # to use the Optimizer class to optimize code
 import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 
@@ -54,9 +57,16 @@ def generate_training_data(text, window_size=2):
 #end generate_training_data
 
 # Training the model
-class CBOW():
-    def __init__(self, vocab_size, embedding_dim):
-        pass
+class CBOW(nn.Module):
+    def __init__(self, vocab, embedding_dim=100):
+        super(CBOW, self).__init__()
+        self.vocab_list = vocab
+        self.vocab_size = len(vocab)
+        self.embedding_size = embedding_dim
+        # Layers of the CBOW
+        self.embedding = nn.Embedding(self.vocab_size, self.embedding_size)
+        
+        
 
     def forward(self):
         pass
@@ -91,13 +101,19 @@ def generate_scatter_plot(data):
 df = pd.read_csv('shakespeare.txt', sep='\t', header=None, names=['Line'])
 processed_text, vocab_list = process_data(df['Line'])
 
+# Generating the training data
 training_data = generate_training_data(text=processed_text)
 
+# Splitting the training data into X and y pairs
 X_train = [data[0] for data in training_data]
 y_train = [data[1] for data in training_data]
 
+# NOTE: TESTING TO ENSURE THAT DATA ACTUALLY WORKS - will be deleted later
 print('Processed text first line: ', processed_text[0].split())
 print('first six examples of training data: ', training_data[:6]) 
 
 print('X_train first three examples: ', X_train[:3])
 print('y_train first three examples: ', y_train[:3])
+
+# Creating the CBOW model using the CBOW class
+# cbow = CBOW(vocab=vocab_list)
