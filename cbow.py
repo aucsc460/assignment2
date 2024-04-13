@@ -56,20 +56,29 @@ def generate_training_data(text, window_size=2):
 
 #end generate_training_data
 
-# Training the model
+# Build the model
 class CBOW(nn.Module):
-    def __init__(self, vocab, embedding_dim=100):
+    def __init__(self, vocab_size, hidden_size, embedding_dim=100):
         super(CBOW, self).__init__()
-        self.vocab_list = vocab
-        self.vocab_size = len(vocab)
-        self.embedding_size = embedding_dim
         # Layers of the CBOW
-        self.embedding = nn.Embedding(self.vocab_size, self.embedding_size)
         
+        # Embedding Layer (m x d)
+        self.embedding = nn.Embedding(vocab_size, embedding_dim) 
         
+        # Multi-Layer Perceptron (MLP)
+        self.hidden = nn.Linear(in_features=embedding_dim, out_features=hidden_size)
+        self.relu = nn.ReLU()
+        self.output = nn.Linear(in_features=hidden_size, out_features=vocab_size)
+        
+        # Softmax Layer
+        self.log_softmax = nn.LogSoftmax() # chose log softmax to avoid problems with multiplying probabilites and getting values too small
 
-    def forward(self):
-        pass
+    def forward(self, x):
+        embeddings = self.embedding(x)
+        average_embeddings = torch.mean(embeddings) # gonna test it out later
+        hidden_output = self.hidden(average_embeddings)
+        output = self.output(hidden_output)
+        return self.log_softmax(output)
 
     def fit(self):
         pass
@@ -116,4 +125,7 @@ print('X_train first three examples: ', X_train[:3])
 print('y_train first three examples: ', y_train[:3])
 
 # Creating the CBOW model using the CBOW class
-# cbow = CBOW(vocab=vocab_list)
+# cbow = CBOW(vocab_size=len(vocab_list))
+
+print(len(vocab_list))
+print(vocab_list['from'])
