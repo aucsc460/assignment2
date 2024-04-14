@@ -186,9 +186,7 @@ def train(model, X, y, epochs=100, lr=0.001):
             
         # collect the total loss for the current epoch (= iteration)
         list_total_loss.append(total_loss)
-        list_epochs.append(epoch)
-        pass
-    
+        list_epochs.append(epoch)    
     
     # AFTER TRAINING THE DATA, CALL THIS FUNCTION FOR VISUALIZATION
     plot_graph(list_epochs, list_total_loss)
