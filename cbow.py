@@ -32,7 +32,6 @@ Sources:
     - CountVectorizer: https://spotintelligence.com/2022/12/20/bag-of-words-python/#:~:text=Scikit%2DLearn-,In%20Python%2C%20you%20can%20implement%20a%20bag%2Dof%2Dwords,CountVectorizer%20class%20in%20the%20sklearn. 
     - Idea for one hot encode function: https://pytorch.org/tutorials/intermediate/char_rnn_classification_tutorial.html
 """
-import string
 import torch
 import torch.nn as nn
 import torch.functional as F
@@ -110,19 +109,23 @@ class CBOW(nn.Module):
     This class implements the CBOW model. It inherits all attributes from its base class, the Module class.
     It creates the embedding and MLP layers, along with the ReLU and LogSoftmax activiation functions.
     """
-    def __init__(self, vocab_size, hidden_size, embedding_dim=100):
+    def __init__(self, vocab_size, hidden_size, embedding_size=100, dropout_rate=0.25):
         super(CBOW, self).__init__()
         
         # Embedding Layer
-        self.embedding = nn.Embedding(vocab_size, embedding_dim) 
+        self.embedding = nn.Embedding(vocab_size, embedding_size) 
         
         # Multi-Layer Perceptron (MLP)
-        self.hidden = nn.Linear(in_features=embedding_dim, out_features=hidden_size) # Linear = fully connected layer
+        self.hidden = nn.Linear(in_features=embedding_size, out_features=hidden_size) # Linear = fully connected layer
         self.relu = nn.ReLU()
         self.output = nn.Linear(in_features=hidden_size, out_features=vocab_size) # Linear = fully connected layer
         
         # Softmax Layer
         self.log_softmax = nn.LogSoftmax() # chose log softmax to avoid problems with multiplying probabilites and getting values too small
+        
+        # Dropout technique for regularization
+        self.dropout = nn.Dropout(dropout_rate)
+
 
     # Prediction Function
     def forward(self, x):
@@ -136,16 +139,17 @@ class CBOW(nn.Module):
             Any: the log probability of the model (i.e., the prediction).
         """
         embeddings = self.embedding(x)
-        average_embeddings = torch.mean(embeddings) # gonna test it out later
+        average_embeddings = torch.mean(embeddings)
         hidden_output = self.relu(self.hidden(average_embeddings))
-        output = self.output(hidden_output)
+        hidden_output_dropout = self.dropout(hidden_output)  # Applying dropout to the hidden layer
+        output = self.output(hidden_output_dropout)
         prob = self.log_softmax(output)
         return prob
     
 # ====================== TRAINING THE MODEL ======================
 
 # TRAINING FUNCTION, PASS THE CBOW MODEL INTO IT AND USE IT HERE
-def train(model, X, y, epochs=100, lr=0.001):
+def train(model, X, y, epochs=100, lr=0.001, weight_decay=1e-3):
     """
     Trains the model.
 
@@ -158,7 +162,7 @@ def train(model, X, y, epochs=100, lr=0.001):
     list_total_loss = []
     list_epochs = []
     loss_function = nn.NLLLoss()
-    optimizer = optim.SGD(model.parameters(), lr=lr)
+    optimizer = optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay)
     
     for epoch in epochs:
         # reset total loss for each iteration through training set
@@ -288,3 +292,6 @@ print(context_vector[0])
 # cbow = CBOW(vocab_size=len(vocab_list), hidden_size=128)
 # train(cbow, X_train, y_train)
 
+# Pass test data through the model to obtain predictions
+#with torch.no_grad():  # No gradient calculation during testing
+#    predictions = cbow(X_test)
