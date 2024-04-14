@@ -101,22 +101,35 @@ def generate_training_data(text, window_size=2):
 # ====================== CBOW MODEL ======================
 
 class CBOW(nn.Module):
+    """
+    This class implements the CBOW model. It inherits all attributes from its base class, the Module class.
+    It creates the embedding and MLP layers, along with the ReLU and LogSoftmax activiation functions.
+    """
     def __init__(self, vocab_size, hidden_size, embedding_dim=100):
         super(CBOW, self).__init__()
         
-        # Embedding Layer (m x d)
+        # Embedding Layer
         self.embedding = nn.Embedding(vocab_size, embedding_dim) 
         
         # Multi-Layer Perceptron (MLP)
-        self.hidden = nn.Linear(in_features=embedding_dim, out_features=hidden_size)
+        self.hidden = nn.Linear(in_features=embedding_dim, out_features=hidden_size) # Linear = fully connected layer
         self.relu = nn.ReLU()
-        self.output = nn.Linear(in_features=hidden_size, out_features=vocab_size)
+        self.output = nn.Linear(in_features=hidden_size, out_features=vocab_size) # Linear = fully connected layer
         
         # Softmax Layer
         self.log_softmax = nn.LogSoftmax() # chose log softmax to avoid problems with multiplying probabilites and getting values too small
 
-    # prediction function
+    # Prediction Function
     def forward(self, x):
+        """
+        Implements the forward pass for the CBOW architecture.
+
+        Args:
+            x (Tensor): the input to the CBOW model.
+
+        Returns:
+            Any: the log probability of the model (i.e., the prediction).
+        """
         embeddings = self.embedding(x)
         average_embeddings = torch.mean(embeddings) # gonna test it out later
         hidden_output = self.relu(self.hidden(average_embeddings))
@@ -128,6 +141,14 @@ class CBOW(nn.Module):
 
 # TRAINING FUNCTION, PASS THE CBOW MODEL INTO IT AND USE IT HERE
 def train(model, X, y):
+    """
+    Trains the model.
+
+    Args:
+        model (Any): the CBOW model.
+        X (Tensor): the input values to the model.
+        y (Tensor): the corresponding values for the model.
+    """
     total_loss = 0
     list_total_loss = []
     list_epochs = []
@@ -174,9 +195,10 @@ print('y_train first three examples: ', y[:3])
 # Splitting training and testing data using the hold-out method (80% training data, 20% testing data)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
+print(type(X_train))
+print(type(y_train))
+
 # Creating the CBOW model using the CBOW class
-# cbow = CBOW(vocab_size=len(vocab_list))
+# cbow = CBOW(vocab_size=len(vocab_list), hidden_size=128)
 # train(cbow, X_train, y_train)
 
-print(len(vocab_list))
-print(vocab_list['from'])
