@@ -26,11 +26,13 @@ The following functions are used to visualize the model:
     - TODO: insert function definition here
 
 Sources:
+    - To generate regex expressions: https://regex101.com/
     - Special characters: https://saturncloud.io/blog/how-to-remove-special-characters-in-pandas-dataframe/#:~:text=Use%20regular%20expressions&text=In%20this%20method%20with%20regular,character%2C%20effectively%20removing%20special%20characters.
     - Tokenize each sentence: https://medium.com/@saivenkat_/implementing-countvectorizer-from-scratch-in-python-exclusive-d6d8063ace22
     - CountVectorizer: https://spotintelligence.com/2022/12/20/bag-of-words-python/#:~:text=Scikit%2DLearn-,In%20Python%2C%20you%20can%20implement%20a%20bag%2Dof%2Dwords,CountVectorizer%20class%20in%20the%20sklearn. 
     - Idea for one hot encode function: https://pytorch.org/tutorials/intermediate/char_rnn_classification_tutorial.html
 """
+import string
 import torch
 import torch.nn as nn
 import torch.functional as F
@@ -58,18 +60,21 @@ def process_data(data):
     special_char = r'[^\w\s]'
     data = data.replace(special_char, '', regex=True) # removes special characters from the 'Line' column
     data = data.str.lower() # lowercases all letters within the 'Line' column
-
-    # Tokenizes each sentence
     text = data.values
-    vocab = set()
-    for sentence in text:
-        for word in sentence.split(' '):
-            vocab.add(word)
+            
+    # Regex expression that ensures that we only get single characters or words, NO numbers
+    token_pattern = r'[a-zA-Z]+|[a-zA-Z]'
 
-    # Create the vocabulary
-    vector = CountVectorizer()
-    vector.fit(vocab)
-    vector.transform(vocab)
+    # Creates the vocabulary and tokenzies the text
+    vector = CountVectorizer(token_pattern=token_pattern)
+    vector.fit(text)
+    
+    # TESTING - DELETE LATER
+    """ print(vector.vocabulary_.get('we'))
+    print(vector.vocabulary_.get('i'))
+    print(vector.vocabulary_.get('1'))
+    print(vector.vocabulary_.get('iv'))
+    print(vector.vocabulary_.get('act')) """
 
     return text, vector.vocabulary_
 
@@ -162,12 +167,26 @@ def train(model, X, y, epochs=100, lr=0.001):
         # iterate through training data X
         for i in range(X):
             # convert X[i] and y[i] to one hot vectors
-            X_one_hot = one_hot_encode(X[i])
+            context_vector = create_context_vector(X[i])
+            y_true = one_hot_encode(y[i])
             
+            # pass context_vector through model
+            y_hat = model(context_vector)            
         
-        # then calcuate the loss
+            # calcuate the loss
+            loss = loss_function(y_hat, y_true)
 
-        # then adjust the weights
+            # adjust the weights
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            
+            # increment the total loss
+            total_loss += loss
+            
+        # collect the total loss for the current epoch (= iteration)
+        list_total_loss.append(total_loss)
+        list_epochs.append(epoch)
         pass
     
     
@@ -217,7 +236,14 @@ def one_hot_encode(word, vocab: dict):
     tensor = torch.zeros(1, len(vocab)) # Pytorch assumes everything is in batches, so we set batch size = 1
     tensor[0][index] = 1
     return tensor
-    
+
+def create_context_vector(input, vocab):
+    context_vector = []
+    for i in range(len(input)):
+        one_hot = one_hot_encode(input[i], vocab)
+        context_vector.append(one_hot)
+    context_tensor = torch.stack(context_vector)
+    return context_tensor
 # ====================== TESTING THE MODEL ======================
 
 # Reading file and creating pandas dataframe
@@ -245,9 +271,22 @@ print(type(y_train))
 print('X_train first three examples: ', X_train[:3])
 print('y_train first three examples: ', y_train[:3])
 
-print(vocab_list.get('we'))
-#print(vocab_list)
-print(one_hot_encode(X_train[0][0], vocab_list))
+context_vector = create_context_vector(X_train[:1][0], vocab_list)
+
+print(context_vector)
+print(context_vector[0])
+
+""" num_elements_to_print = 10
+
+# Iterate over the dictionary and print the first few elements
+count = 0
+for key, value in vocab_list.items():
+    if count < num_elements_to_print:
+        print(f"{key}: {value}")
+        count += 1
+    else:
+        break """
+    
 
 # X_train_1 = one_hot_encode()
 
