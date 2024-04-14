@@ -217,7 +217,7 @@ def word_to_index(word: str, vocab: dict):
     Returns:
         int: The corresponding index (value) of the word (key).
     """
-    return vocab.get('word')
+    return vocab.get(word)
 
 def one_hot_encode(word, vocab: dict):
     """
