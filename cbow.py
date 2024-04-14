@@ -29,6 +29,7 @@ Sources:
     - Special characters: https://saturncloud.io/blog/how-to-remove-special-characters-in-pandas-dataframe/#:~:text=Use%20regular%20expressions&text=In%20this%20method%20with%20regular,character%2C%20effectively%20removing%20special%20characters.
     - Tokenize each sentence: https://medium.com/@saivenkat_/implementing-countvectorizer-from-scratch-in-python-exclusive-d6d8063ace22
     - CountVectorizer: https://spotintelligence.com/2022/12/20/bag-of-words-python/#:~:text=Scikit%2DLearn-,In%20Python%2C%20you%20can%20implement%20a%20bag%2Dof%2Dwords,CountVectorizer%20class%20in%20the%20sklearn. 
+    - Idea for one hot encode function: https://pytorch.org/tutorials/intermediate/char_rnn_classification_tutorial.html
 """
 import torch
 import torch.nn as nn
@@ -157,7 +158,7 @@ def train(model, X, y):
     # AFTER TRAINING THE DATA, CALL THIS FUNCTION FOR VISUALIZATION
     plot_graph(list_epochs, list_total_loss)
 
-def plot_graph(self, list_epochs, list_total_loss):
+def plot_graph(self, list_epochs: list, list_total_loss: list):
     """
     This function plots a graph that visualizes how the loss decreases over the epochs. That is, as the epochs increase, the loss decreases.
 
@@ -171,6 +172,35 @@ def plot_graph(self, list_epochs, list_total_loss):
     ax.set_ylabel('Total loss')
     ax.set_title('Loss Function as a Function of Epochs')
     plt.show()
+    
+def word_to_index(word: str, vocab: dict):
+    """
+    Gets the index of the word in the vocabulary dictionary.
+    
+    Args:
+        word (str): The word (key) to retrieve its corresponding index in the vocabulary.
+        vocab (dict): The vocabulary, consisting of all unique words in the document.
+        
+    Returns:
+        int: The corresponding index (value) of the word (key).
+    """
+    return vocab.get('word')
+
+def one_hot_encode(word, vocab: dict):
+    """
+    Turns a word into a one hot vector.
+    
+    Args:
+        word (str): The word to be turned into a one hot vector.
+        vocab (dict): The vocabulary, consisting of all unique words in the document.
+        
+    Returns:
+        tensor: The one hot vector representation of the word.
+    """
+    index = word_to_index(word, vocab)
+    tensor = torch.zeros(1, len(vocab)) # Pytorch assumes everything is in batches, so we set batch size = 1
+    tensor[0][index] = 1
+    return tensor
     
 # ====================== TESTING THE MODEL ======================
 
@@ -189,14 +219,20 @@ y = [data[1] for data in training_data]
 print('Processed text first line: ', processed_text[0].split())
 print('first six examples of training data: ', training_data[:6]) 
 
-print('X_train first three examples: ', X[:3])
-print('y_train first three examples: ', y[:3])
 
 # Splitting training and testing data using the hold-out method (80% training data, 20% testing data)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 print(type(X_train))
 print(type(y_train))
+
+print('X_train first three examples: ', X_train[:3])
+print('y_train first three examples: ', y_train[:3])
+
+print(vocab_list.get('creatures'))
+print(one_hot_encode(X_train[0][0], vocab_list))
+
+# X_train_1 = one_hot_encode()
 
 # Creating the CBOW model using the CBOW class
 # cbow = CBOW(vocab_size=len(vocab_list), hidden_size=128)
