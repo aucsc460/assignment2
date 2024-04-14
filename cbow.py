@@ -166,23 +166,20 @@ def train(model, X, y, epochs=100, lr=0.001):
         
         # iterate through training data X
         for i in range(X):
+            pass
             # convert X[i] and y[i] to one hot vectors (two lines)
-            context_vector = create_context_vector(X[i])
-            y_true = one_hot_encode(y[i])
+            
             
             # pass context_vector through model (1 line)
-            y_hat = model(context_vector)            
+                   
         
             # calcuate the loss (1 line)
-            loss = loss_function(y_hat, y_true)
+           
 
             # adjust the weights (3 lines)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            
             
             # increment the total loss (1 line)
-            total_loss += loss
             
         # collect the total loss for the current epoch (= iteration)
         list_total_loss.append(total_loss)
@@ -235,7 +232,17 @@ def one_hot_encode(word, vocab: dict):
     tensor[0][index] = 1
     return tensor
 
-def create_context_vector(input, vocab):
+def create_one_hot_vectors(input, vocab):
+    """
+    Converts a single training example into one hot vectors.
+
+    Args:
+        input (list): The training example to be converted into one hot vectors.
+        vocab (dict): The vocabulary, consisting of all unique words in the document.
+
+    Returns:
+        tensor: A tensor containing all one hot vector representations of the input.
+    """
     context_vector = []
     for i in range(len(input)):
         one_hot = one_hot_encode(input[i], vocab)
@@ -269,24 +276,10 @@ print(type(y_train))
 print('X_train first three examples: ', X_train[:3])
 print('y_train first three examples: ', y_train[:3])
 
-context_vector = create_context_vector(X_train[:1][0], vocab_list)
+context_vector = create_one_hot_vectors(X_train[:1][0], vocab_list)
 
 print(context_vector)
 print(context_vector[0])
-
-""" num_elements_to_print = 10
-
-# Iterate over the dictionary and print the first few elements
-count = 0
-for key, value in vocab_list.items():
-    if count < num_elements_to_print:
-        print(f"{key}: {value}")
-        count += 1
-    else:
-        break """
-    
-
-# X_train_1 = one_hot_encode()
 
 # Creating the CBOW model using the CBOW class
 # cbow = CBOW(vocab_size=len(vocab_list), hidden_size=128)
