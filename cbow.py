@@ -26,10 +26,13 @@ The following functions are used to visualize the model:
     - TODO: insert function definition here
 
 Sources:
+    - To generate regex expressions: https://regex101.com/
     - Special characters: https://saturncloud.io/blog/how-to-remove-special-characters-in-pandas-dataframe/#:~:text=Use%20regular%20expressions&text=In%20this%20method%20with%20regular,character%2C%20effectively%20removing%20special%20characters.
     - Tokenize each sentence: https://medium.com/@saivenkat_/implementing-countvectorizer-from-scratch-in-python-exclusive-d6d8063ace22
     - CountVectorizer: https://spotintelligence.com/2022/12/20/bag-of-words-python/#:~:text=Scikit%2DLearn-,In%20Python%2C%20you%20can%20implement%20a%20bag%2Dof%2Dwords,CountVectorizer%20class%20in%20the%20sklearn. 
+    - Idea for one hot encode function: https://pytorch.org/tutorials/intermediate/char_rnn_classification_tutorial.html
 """
+import string
 import torch
 import torch.nn as nn
 import torch.functional as F
@@ -57,19 +60,21 @@ def process_data(data):
     special_char = r'[^\w\s]'
     data = data.replace(special_char, '', regex=True) # removes special characters from the 'Line' column
     data = data.str.lower() # lowercases all letters within the 'Line' column
-
-    # Tokenizes each sentence
     text = data.values
-    vocab = set()
-    for i in text:
-        for j in i.split(' '):
-            if len(j) > 2:
-                vocab.add(j)
+            
+    # Regex expression that ensures that we only get single characters or words, NO numbers
+    token_pattern = r'[a-zA-Z]+|[a-zA-Z]'
 
-    # Create the vocabulary
-    vector = CountVectorizer()
-    vector.fit(vocab)
-    vector.transform(vocab)
+    # Creates the vocabulary and tokenzies the text
+    vector = CountVectorizer(token_pattern=token_pattern)
+    vector.fit(text)
+    
+    # TESTING - DELETE LATER
+    """ print(vector.vocabulary_.get('we'))
+    print(vector.vocabulary_.get('i'))
+    print(vector.vocabulary_.get('1'))
+    print(vector.vocabulary_.get('iv'))
+    print(vector.vocabulary_.get('act')) """
 
     return text, vector.vocabulary_
 
@@ -140,7 +145,7 @@ class CBOW(nn.Module):
 # ====================== TRAINING THE MODEL ======================
 
 # TRAINING FUNCTION, PASS THE CBOW MODEL INTO IT AND USE IT HERE
-def train(model, X, y):
+def train(model, X, y, epochs=100, lr=0.001):
     """
     Trains the model.
 
@@ -152,12 +157,38 @@ def train(model, X, y):
     total_loss = 0
     list_total_loss = []
     list_epochs = []
+    loss_function = nn.NLLLoss()
+    optimizer = optim.SGD(model.parameters(), lr=lr)
     
+    for epoch in epochs:
+        # reset total loss for each iteration through training set
+        total_loss = 0
+        
+        # iterate through training data X
+        for i in range(X):
+            pass
+            # convert X[i] and y[i] to one hot vectors (two lines)
+            
+            
+            # pass context_vector through model (1 line)
+                   
+        
+            # calcuate the loss (1 line)
+           
+
+            # adjust the weights (3 lines)
+            
+            
+            # increment the total loss (1 line)
+            
+        # collect the total loss for the current epoch (= iteration)
+        list_total_loss.append(total_loss)
+        list_epochs.append(epoch)    
     
     # AFTER TRAINING THE DATA, CALL THIS FUNCTION FOR VISUALIZATION
     plot_graph(list_epochs, list_total_loss)
 
-def plot_graph(self, list_epochs, list_total_loss):
+def plot_graph(self, list_epochs: list, list_total_loss: list):
     """
     This function plots a graph that visualizes how the loss decreases over the epochs. That is, as the epochs increase, the loss decreases.
 
@@ -172,6 +203,52 @@ def plot_graph(self, list_epochs, list_total_loss):
     ax.set_title('Loss Function as a Function of Epochs')
     plt.show()
     
+def word_to_index(word: str, vocab: dict):
+    """
+    Gets the index of the word in the vocabulary dictionary.
+    
+    Args:
+        word (str): The word (key) to retrieve its corresponding index in the vocabulary.
+        vocab (dict): The vocabulary, consisting of all unique words in the document.
+        
+    Returns:
+        int: The corresponding index (value) of the word (key).
+    """
+    return vocab.get(word)
+
+def one_hot_encode(word, vocab: dict):
+    """
+    Turns a word into a one hot vector.
+    
+    Args:
+        word (str): The word to be turned into a one hot vector.
+        vocab (dict): The vocabulary, consisting of all unique words in the document.
+        
+    Returns:
+        tensor: The one hot vector representation of the word.
+    """
+    index = word_to_index(word, vocab)
+    tensor = torch.zeros(1, len(vocab)) # Pytorch assumes everything is in batches, so we set batch size = 1
+    tensor[0][index] = 1
+    return tensor
+
+def create_one_hot_vectors(input, vocab):
+    """
+    Converts a single training example into one hot vectors.
+
+    Args:
+        input (list): The training example to be converted into one hot vectors.
+        vocab (dict): The vocabulary, consisting of all unique words in the document.
+
+    Returns:
+        tensor: A tensor containing all one hot vector representations of the input.
+    """
+    context_vector = []
+    for i in range(len(input)):
+        one_hot = one_hot_encode(input[i], vocab)
+        context_vector.append(one_hot)
+    context_tensor = torch.stack(context_vector)
+    return context_tensor
 # ====================== TESTING THE MODEL ======================
 
 # Reading file and creating pandas dataframe
@@ -189,14 +266,20 @@ y = [data[1] for data in training_data]
 print('Processed text first line: ', processed_text[0].split())
 print('first six examples of training data: ', training_data[:6]) 
 
-print('X_train first three examples: ', X[:3])
-print('y_train first three examples: ', y[:3])
 
 # Splitting training and testing data using the hold-out method (80% training data, 20% testing data)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 print(type(X_train))
 print(type(y_train))
+
+print('X_train first three examples: ', X_train[:3])
+print('y_train first three examples: ', y_train[:3])
+
+context_vector = create_one_hot_vectors(X_train[:1][0], vocab_list)
+
+print(context_vector)
+print(context_vector[0])
 
 # Creating the CBOW model using the CBOW class
 # cbow = CBOW(vocab_size=len(vocab_list), hidden_size=128)
