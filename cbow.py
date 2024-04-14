@@ -166,23 +166,17 @@ def train(model, X, y, epochs=100, lr=0.001):
         
         # iterate through training data X
         for i in range(X):
-            # convert X[i] and y[i] to one hot vectors
-            context_vector = create_context_vector(X[i])
-            y_true = one_hot_encode(y[i])
+            pass
+            # convert X[i] and y[i] to one hot vectors (two lines)
             
-            # pass context_vector through model
-            y_hat = model(context_vector)            
+            
+            # pass context_vector through model (1 line)
         
-            # calcuate the loss
-            loss = loss_function(y_hat, y_true)
+            # calcuate the loss (1 line)
 
-            # adjust the weights
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            # adjust the weights (3 lines)
             
-            # increment the total loss
-            total_loss += loss
+            # increment the total loss (1 line)
             
         # collect the total loss for the current epoch (= iteration)
         list_total_loss.append(total_loss)
