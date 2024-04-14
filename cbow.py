@@ -62,10 +62,9 @@ def process_data(data):
     # Tokenizes each sentence
     text = data.values
     vocab = set()
-    for i in text:
-        for j in i.split(' '):
-            if len(j) > 2:
-                vocab.add(j)
+    for sentence in text:
+        for word in sentence.split(' '):
+            vocab.add(word)
 
     # Create the vocabulary
     vector = CountVectorizer()
@@ -141,7 +140,7 @@ class CBOW(nn.Module):
 # ====================== TRAINING THE MODEL ======================
 
 # TRAINING FUNCTION, PASS THE CBOW MODEL INTO IT AND USE IT HERE
-def train(model, X, y):
+def train(model, X, y, epochs=100, lr=0.001):
     """
     Trains the model.
 
@@ -153,6 +152,23 @@ def train(model, X, y):
     total_loss = 0
     list_total_loss = []
     list_epochs = []
+    loss_function = nn.NLLLoss()
+    optimizer = optim.SGD(model.parameters(), lr=lr)
+    
+    for epoch in epochs:
+        # reset total loss for each iteration through training set
+        total_loss = 0
+        
+        # iterate through training data X
+        for i in range(X):
+            # convert X[i] and y[i] to one hot vectors
+            X_one_hot = one_hot_encode(X[i])
+            
+        
+        # then calcuate the loss
+
+        # then adjust the weights
+        pass
     
     
     # AFTER TRAINING THE DATA, CALL THIS FUNCTION FOR VISUALIZATION
@@ -229,7 +245,8 @@ print(type(y_train))
 print('X_train first three examples: ', X_train[:3])
 print('y_train first three examples: ', y_train[:3])
 
-print(vocab_list.get('creatures'))
+print(vocab_list.get('we'))
+#print(vocab_list)
 print(one_hot_encode(X_train[0][0], vocab_list))
 
 # X_train_1 = one_hot_encode()
