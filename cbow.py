@@ -107,25 +107,25 @@ def generate_training_data(text, window_size=2):
 
 #end generate_training_data
 import torch.nn.init as init
-# Training the model
+# ====================== CBOW MODEL ======================
+
 class CBOW(nn.Module):
     """
     This class implements the CBOW model. It inherits all attributes from its base class, the Module class.
     It creates the embedding and MLP layers, along with the ReLU and LogSoftmax activiation functions.
     """
+
     def __init__(self, vocab_size, hidden_size, embedding_dim=100):
         super(CBOW, self).__init__()
-        self.vocab_size = vocab_size
+
         # Embedding Layer
-        self.embedding = nn.Embedding(vocab_size, embedding_dim) 
-        
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+
         # Multi-Layer Perceptron (MLP)
-        self.hidden = nn.Linear(in_features=embedding_dim, out_features=hidden_size) # Linear = fully connected layer
-        self.output = nn.Linear(in_features=hidden_size, out_features=vocab_size) # Linear = fully connected layer
-        
-        # Softmax Layer
-        self.log_softmax = nn.LogSoftmax() # chose log softmax to avoid problems with multiplying probabilites and getting values too small
-    
+        self.hidden = nn.Linear(embedding_dim, hidden_size)  # Linear = fully connected layer
+        self.relu = nn.ReLU()
+        self.output = nn.Linear(hidden_size, vocab_size)  # Linear = fully connected layer
+
     # Prediction Function
     def forward(self, x):
         """
@@ -137,22 +137,30 @@ class CBOW(nn.Module):
         Returns:
             Any: the log probability of the model (i.e., the prediction).
         """
-        embeddings = self.embedding(x)
-        average_embeddings = torch.mean(embeddings, dim=1) # gonna test it out later
-        hidden_output = F.relu(self.hidden(average_embeddings))
-        output = self.output(hidden_output)   
-        prob = F.log_softmax(output, dim= -1)
+        embeddings = self.embedding(x)  # 4D result vector (batch_size, seq_len, vocab_size, dim_size)
+        # print("embeddings shape: ", embeddings.shape)
 
-        print ("Average embeddings ", average_embeddings.shape)
-        print ("Output i.e. After Hidden layer output shape ", output.shape)
-        print ("Predication shape ", prob.shape)
+        average_embeddings = torch.mean(embeddings, dim=2)  # get average embeddings across vocabulary
+        # print("average shape: ", average_embeddings.shape)
 
-        return prob
+        hidden_output = self.relu(self.hidden(average_embeddings))
+        # print("hidden shape: ", hidden_output.shape)
+
+        output = self.output(hidden_output)
+        # print("output pre-softmax shape: ", output.shape)
+
+        # # Apply Softmax
+        # prob = F.log_softmax(output, dim=2)  # get softmax probabilities across vocabulary
+        # # print("probability shape: ", prob.shape)
+        #
+        # predicted_value = prob[0]
+
+        return output[0]
     
 # ====================== TRAINING THE MODEL ======================
 
 # TRAINING FUNCTION, PASS THE CBOW MODEL INTO IT AND USE IT HERE
-def train(model, X, y, vocab_list, epochs=100, lr=0.001):
+def train(model, vocabulary, X, y, epochs=5, lr=0.001):
     """
     Trains the model.
 
@@ -160,75 +168,53 @@ def train(model, X, y, vocab_list, epochs=100, lr=0.001):
         model (Any): the CBOW model.
         X (Tensor): the input values to the model.
         y (Tensor): the corresponding values for the model.
+        --------------
+        :param y:
+        :param X:
+        :param model:
+        :param vocabulary:
+        :param lr:
+        :param epochs:
     """
-    total_loss = 0
     list_total_loss = []
     list_epochs = []
-    loss_function = nn.NLLLoss()
     optimizer = optim.SGD(model.parameters(), lr=lr)
-    
-    total_loss = 0
-        
-    x_one_hot_context = create_one_hot_vectors(X[0], vocab_list)
-    y_one_hot_label = one_hot_encode(y[0], vocab_list)
 
-    prediction =  model(x_one_hot_context)
-        
-    print(prediction)
-    
-    total_loss += loss_function(prediction, y_one_hot_label)
-    
-    # for epoch in range(1):
-    #     # reset total loss for each iteration through training set
-    #     total_loss = 0
-        
-    #     x_one_hot_context = create_one_hot_vectors(X[0], vocab_list)
-    #     y_one_hot_label = one_hot_encode(y[0], vocab_list)
+    for epoch in range(epochs):
+        # reset total loss for each iteration through training set
+        total_loss = 0
 
-    #     prediction =  model(x_one_hot_context)
-        
-    #     print(prediction)
-
-    #     total_loss += loss_function(prediction, y_one_hot_label)
-
-    #     #optimize at the end of each epoch
-    #     optimizer.zero_grad()
-    #     total_loss.backward()
-    #     optimizer.step()
-   
-    #     print("total_loss after: ", epoch, "epoch is ",total_loss)
-        
         # iterate through training data X
-        # for i in range(len(X)):
-        #     # convert X[i] to one hot vectors (two lines)
-        #     if X[i] !=  []: # skip empty contexts
-        #         x_one_hot_context = create_one_hot_vectors(X[i], vocab_list)
+        for i in range(10):
+            # convert X[i] and y[i] to one hot vectors (two lines)
+            if X[i]:
+                # transform contexts into one hot vectors of type int for embedding layer
+                ith_context_vect = create_one_hot_vectors(X[i], vocabulary).int()
 
-        #         model.forward(x_one_hot_context)
-             
-        #     # convert y[i] to one hot vectors (two lines)
-        #     if y[i] !=  []:  # skip empty labels
-        #         y_one_hot = create_one_hot_vectors(y[i], vocab_list)
-            
-            # pass context_vector through model (1 line) 
+                # transform labels into one hot vectors of type int for embedding layer
+                y_label = one_hot_encode(y[i], vocabulary)
 
+                # get expected predictions
+                prediction = model(ith_context_vect)
 
-                   
-        
-            # calcuate the loss (1 line)
-           
+                # apply prob softmax
+                prob_softmax = F.softmax(prediction, dim=0)  # drop batch size dimension to compare loss
 
-            # adjust the weights (3 lines)
-            
-            
-            # increment the total loss (1 line)
-            
-        # collect the total loss for the current epoch (= iteration)
-        # list_total_loss.append(total_loss)
-        # list_epochs.append(epoch)    
-    
-    # AFTER TRAINING THE DATA, CALL THIS FUNCTION FOR VISUALIZATION
-    # plot_graph(list_epochs, list_total_loss)
+                # Compute cross entropy loss
+                loss = F.cross_entropy(prediction, y_label)
+                total_loss += loss
+
+        # Backward step:
+        optimizer.zero_grad()
+        total_loss.backward()
+        optimizer.step()
+
+        list_total_loss.append(total_loss)
+
+        list_epochs.append(epoch)
+
+    #plot_graph(list_epochs, list_total_loss)
+    torch.save(model.state_dict(), 'final_model_weights.pth')
 
 
 
@@ -274,7 +260,7 @@ def one_hot_encode(word, vocab: dict):
     index = word_to_index(word, vocab)
     tensor = torch.zeros(1, len(vocab)) # Pytorch assumes everything is in batches, so we set batch size = 1
     tensor[0][index] = 1
-    return tensor.int()
+    return tensor
 
 def create_one_hot_vectors(input, vocab):
     """
@@ -299,8 +285,22 @@ def create_one_hot_vectors(input, vocab):
 # ====================== VISUALIZING THE DATA ================== #
 # REFERENCE: https://www.geeksforgeeks.org/continuous-bag-of-words-cbow-in-nlp/
 
-def plot_PCE(word_embeddings):
-    word_embeddings_reduced = PCE(word_embeddings)
+## NEED TO GET THE WORD_EMBEDDINGS FROM THE MODEL
+## SAVE THE WEIGHTS AND LOAD THE WEIGHTS
+
+def plot_PCA(word_embeddings):
+
+    """
+    Plots and visualizes the similarities in words from our trained model
+
+    Uses my_PCA to perform PCA on the 2D word embeddings
+    
+    """
+
+    # Perform PCA on the 2D word embeddings
+    word_embeddings_reduced = my_PCA(word_embeddings)
+
+    #All this plotting was referenced from geeksforgeeks.org
     plt.figure(figsize=(8, 8))
     plt.scatter(word_embeddings_reduced[:, 0], word_embeddings_reduced[:, 1], alpha=0.5)
 
@@ -313,13 +313,10 @@ def plot_PCE(word_embeddings):
     plt.grid(True)
     plt.show()
 
-def PCE(word_embeddings):
+def my_PCA(word_embeddings):
     pca = PCA(n_components=2)  # Reduce to 2 dimensions for visualization
-    word_embeddings_reduced = pca.fit_transform(word_embeddings)
+    word_embeddings_reduced = pca.fit_transform(word_embeddings) # Transform our word embeddings to 2D
     return word_embeddings_reduced
-
-
-
 
 # ====================== TESTING THE MODEL ======================
 
@@ -350,8 +347,18 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 
 context_vector = create_one_hot_vectors(X_train[:1][0], vocab_list)
 
-my_model = CBOW(vocab_size=len(vocab_list), hidden_size=100)
-train(my_model, X_train, y_train, vocab_list)
+CBOW_model = CBOW(vocab_size=len(vocab_list), hidden_size=100)
+
+train(CBOW_model, vocab_list, X_train, y_train)
+
+# Load the saved weights (parameters) of the trained CBOW model from a file
+CBOW_model.load_state_dict(torch.load('final_model_weights.pth'))
+
+# Extract the word embeddings from the CBOW model and convert them to a NumPy array
+weights = CBOW_model.embedding.weight.detach().numpy()
+
+# Plot the PCA visualization of the word embeddings
+plot_PCA(weights)
 
 
 # print(context_vector)
