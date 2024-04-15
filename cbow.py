@@ -35,7 +35,7 @@ Sources:
 import string
 import torch
 import torch.nn as nn
-import torch.functional as F
+import torch.nn.functional as F
 import torch.optim as optim # to use the Optimizer class to optimize code
 import numpy as np
 import pandas as pd
@@ -113,12 +113,17 @@ class CBOW(nn.Module):
     """
     def __init__(self, vocab_size, hidden_size, embedding_dim=100):
         super(CBOW, self).__init__()
-        self.vocab_list = vocab
-        self.vocab_size = len(vocab)
-        self.embedding_size = embedding_dim
-        # Layers of the CBOW
-        self.embedding = nn.Embedding(self.vocab_size, self.embedding_size)
-
+        self.vocab_size = vocab_size
+        # Embedding Layer
+        self.embedding = nn.Embedding(vocab_size, embedding_dim) 
+        
+        # Multi-Layer Perceptron (MLP)
+        self.hidden = nn.Linear(in_features=embedding_dim, out_features=hidden_size) # Linear = fully connected layer
+        self.output = nn.Linear(in_features=hidden_size, out_features=vocab_size) # Linear = fully connected layer
+        
+        # Softmax Layer
+        self.log_softmax = nn.LogSoftmax() # chose log softmax to avoid problems with multiplying probabilites and getting values too small
+    
     # Prediction Function
     def forward(self, x):
         """
@@ -131,16 +136,21 @@ class CBOW(nn.Module):
             Any: the log probability of the model (i.e., the prediction).
         """
         embeddings = self.embedding(x)
-        average_embeddings = torch.mean(embeddings) # gonna test it out later
-        hidden_output = self.relu(self.hidden(average_embeddings))
-        output = self.output(hidden_output)
-        prob = self.log_softmax(output)
+        average_embeddings = torch.mean(embeddings, dim=1) # gonna test it out later
+        hidden_output = F.relu(self.hidden(average_embeddings))
+        output = self.output(hidden_output)   
+        prob = F.log_softmax(output, dim= -1)
+
+        print ("Average embeddings ", average_embeddings.shape)
+        print ("Output i.e. After Hidden layer output shape ", output.shape)
+        print ("Predication shape ", prob.shape)
+
         return prob
     
 # ====================== TRAINING THE MODEL ======================
 
 # TRAINING FUNCTION, PASS THE CBOW MODEL INTO IT AND USE IT HERE
-def train(model, X, y, epochs=100, lr=0.001):
+def train(model, X, y, vocab_list, epochs=100, lr=0.001):
     """
     Trains the model.
 
@@ -155,17 +165,52 @@ def train(model, X, y, epochs=100, lr=0.001):
     loss_function = nn.NLLLoss()
     optimizer = optim.SGD(model.parameters(), lr=lr)
     
-    for epoch in epochs:
-        # reset total loss for each iteration through training set
-        total_loss = 0
+    total_loss = 0
+        
+    x_one_hot_context = create_one_hot_vectors(X[0], vocab_list)
+    y_one_hot_label = one_hot_encode(y[0], vocab_list)
+
+    prediction =  model(x_one_hot_context)
+        
+    print(prediction)
+    
+    total_loss += loss_function(prediction, y_one_hot_label)
+    
+    # for epoch in range(1):
+    #     # reset total loss for each iteration through training set
+    #     total_loss = 0
+        
+    #     x_one_hot_context = create_one_hot_vectors(X[0], vocab_list)
+    #     y_one_hot_label = one_hot_encode(y[0], vocab_list)
+
+    #     prediction =  model(x_one_hot_context)
+        
+    #     print(prediction)
+
+    #     total_loss += loss_function(prediction, y_one_hot_label)
+
+    #     #optimize at the end of each epoch
+    #     optimizer.zero_grad()
+    #     total_loss.backward()
+    #     optimizer.step()
+   
+    #     print("total_loss after: ", epoch, "epoch is ",total_loss)
         
         # iterate through training data X
-        for i in range(X):
-            pass
-            # convert X[i] and y[i] to one hot vectors (two lines)
+        # for i in range(len(X)):
+        #     # convert X[i] to one hot vectors (two lines)
+        #     if X[i] !=  []: # skip empty contexts
+        #         x_one_hot_context = create_one_hot_vectors(X[i], vocab_list)
+
+        #         model.forward(x_one_hot_context)
+             
+        #     # convert y[i] to one hot vectors (two lines)
+        #     if y[i] !=  []:  # skip empty labels
+        #         y_one_hot = create_one_hot_vectors(y[i], vocab_list)
             
-            
-            # pass context_vector through model (1 line)
+            # pass context_vector through model (1 line) 
+
+
                    
         
             # calcuate the loss (1 line)
@@ -177,11 +222,13 @@ def train(model, X, y, epochs=100, lr=0.001):
             # increment the total loss (1 line)
             
         # collect the total loss for the current epoch (= iteration)
-        list_total_loss.append(total_loss)
-        list_epochs.append(epoch)    
+        # list_total_loss.append(total_loss)
+        # list_epochs.append(epoch)    
     
     # AFTER TRAINING THE DATA, CALL THIS FUNCTION FOR VISUALIZATION
-    plot_graph(list_epochs, list_total_loss)
+    # plot_graph(list_epochs, list_total_loss)
+
+
 
 def plot_graph(self, list_epochs: list, list_total_loss: list):
     """
@@ -225,7 +272,7 @@ def one_hot_encode(word, vocab: dict):
     index = word_to_index(word, vocab)
     tensor = torch.zeros(1, len(vocab)) # Pytorch assumes everything is in batches, so we set batch size = 1
     tensor[0][index] = 1
-    return tensor
+    return tensor.int()
 
 def create_one_hot_vectors(input, vocab):
     """
@@ -242,6 +289,8 @@ def create_one_hot_vectors(input, vocab):
     for i in range(len(input)):
         one_hot = one_hot_encode(input[i], vocab)
         context_vector.append(one_hot)
+        # if (len(input) == 0):
+        #     print ("======aha, WE'EVE FOUND HER!!!! =========")
     context_tensor = torch.stack(context_vector)
     return context_tensor
 # ====================== TESTING THE MODEL ======================
@@ -258,54 +307,32 @@ X = [data[0] for data in training_data]
 y = [data[1] for data in training_data]
 
 # NOTE: TESTING TO ENSURE THAT DATA ACTUALLY WORKS - will be deleted later
-print('Processed text first line: ', processed_text[0].split())
-print('first six examples of training data: ', training_data[:6]) 
+# print('Processed text first line: ', processed_text[0].split())
+# print('first six examples of training data: ', training_data[:6]) 
 
 
 # Splitting training and testing data using the hold-out method (80% training data, 20% testing data)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-print(type(X_train))
-print(type(y_train))
+# print(type(X_train))
+# print(type(y_train))
 
-print('X_train first three examples: ', X_train[:3])
-print('y_train first three examples: ', y_train[:3])
+# print('X_train first three examples: ', X_train[:3])
+# print('y_train first three examples: ', y_train[:3])
 
 context_vector = create_one_hot_vectors(X_train[:1][0], vocab_list)
 
-print(context_vector)
-print(context_vector[0])
+my_model = CBOW(vocab_size=len(vocab_list), hidden_size=100)
+train(my_model, X_train, y_train, vocab_list)
+
+
+# print(context_vector)
+# print(context_vector[0])
 
 # Creating the CBOW model using the CBOW class
 # cbow = CBOW(vocab=vocab_list)
 
 
-# Create one hot vectors for a given sample ([context], target)
-def one_hot_mama(context, target, vocab_dict):
-    # Convert vocab_dict keys (words) to a list
-    vocab_list = list(vocab_dict.keys())
-
-    # Initialize a dictionary to map words to indices
-    word_to_index = {word: i for i, word in enumerate(vocab_list)}
-
-    # Convert context and target to indices using the word_to_index mapping
-    context_indices = [word_to_index.get(word, -1) for word in context]
-    target_index = word_to_index.get(target, -1)
-
-    # Convert indices to PyTorch tensors, excluding out-of-vocabulary words (-1)
-    context_tensor = torch.LongTensor([index for index in context_indices if index != -1])
-    target_tensor = torch.LongTensor([target_index]) if target_index != -1 else None
-
-    # Use torch.nn.functional.one_hot to create one-hot vectors
-    context_one_hot = torch.nn.functional.one_hot(context_tensor, num_classes=len(vocab_list))
-    target_one_hot = torch.nn.functional.one_hot(target_tensor, num_classes=len(vocab_list)) if target_tensor is not None else None
-
-    return context_one_hot, target_one_hot
-
-    
-context_one_hot, target_one_hot = one_hot_mama(X_train[0], y_train[0], vocab_list)
-print("Context one-hot vector:", context_one_hot)
-print("Target one-hot vector:", target_one_hot)
 
 
 
