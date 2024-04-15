@@ -40,8 +40,10 @@ import torch.optim as optim # to use the Optimizer class to optimize code
 import numpy as np
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.model_selection import train_test_split
+from sklearn.decomposition import PCA
 
 # ====================== PREPROCESSING THE DATA ======================
 
@@ -293,6 +295,32 @@ def create_one_hot_vectors(input, vocab):
         #     print ("======aha, WE'EVE FOUND HER!!!! =========")
     context_tensor = torch.stack(context_vector)
     return context_tensor
+
+# ====================== VISUALIZING THE DATA ================== #
+# REFERENCE: https://www.geeksforgeeks.org/continuous-bag-of-words-cbow-in-nlp/
+
+def plot_PCE(word_embeddings):
+    word_embeddings_reduced = PCE(word_embeddings)
+    plt.figure(figsize=(8, 8))
+    plt.scatter(word_embeddings_reduced[:, 0], word_embeddings_reduced[:, 1], alpha=0.5)
+
+    for i, word in enumerate(vocab_list.keys()):
+        plt.annotate(word, xy=(word_embeddings_reduced[i, 0], word_embeddings_reduced[i, 1]), fontsize=8)
+
+    plt.xlabel('Principal Component 1')
+    plt.ylabel('Principal Component 2')
+    plt.title('PCA Visualization of Word Embeddings')
+    plt.grid(True)
+    plt.show()
+
+def PCE(word_embeddings):
+    pca = PCA(n_components=2)  # Reduce to 2 dimensions for visualization
+    word_embeddings_reduced = pca.fit_transform(word_embeddings)
+    return word_embeddings_reduced
+
+
+
+
 # ====================== TESTING THE MODEL ======================
 
 # Reading file and creating pandas dataframe
