@@ -200,8 +200,6 @@ def plot_graph(list_epochs: list, list_total_loss: list):
         list_epochs (list): The list of epochs (iterations).
         list_total_loss (list): The list of total losses per epoch.
     """
-    print(type(list_epochs))
-    print(type(list_total_loss))
     fig, ax = plt.subplots()
     ax.plot(list_epochs, list_total_loss)
     ax.set_xlabel('Number of epochs')
@@ -313,8 +311,6 @@ y = [data[1] for data in training_data]
 
 # Splitting training and testing data using the hold-out method (80% training data, 20% testing data)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.9999, random_state=42)
-
-print('Length of X_train', len(X_train))
 
 # Getting the vocabulary size
 vocab_len = len(vocab_list)
