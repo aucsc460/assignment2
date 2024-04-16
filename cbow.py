@@ -2,7 +2,7 @@
 File: cbow.py
 
 Author(s): Anjola Aina, Aarushi Gupta, Priscilla Adebanji, James Rota, Cindy Ni
-Date: April 13th, 2024
+Date: April 15th, 2024
 
 Description:
 
@@ -17,13 +17,14 @@ The following class is used to implement the CBOW model:
     - CBOW(vocab_size, hidden_size, embedding_dim)
         - forward(x) -> probability distribution over vocab, with highest value giving the prediction for the given input x
 
-The following functions are used to train the model (and apply techniques to prevent overfitting):
-    - train(model, X, y) -> void
-    - plot_graph(list_epochs, list_total_loss) -> void
-    - TODO: early_stopping / regularization? - this function would be used in conjuction with the train i assume
+The following functions are used to train the model:
+    - train(model, X, y, eopchs, lr, weight_decay) -> void
+    - NOTE: L2 normalization was added to the train function via the weight_decay parameter.
 
 The following functions are used to visualize the model:
-    - TODO: insert function definition here
+    - plot_graph(list_epochs, list_total_loss) -> void
+    - my_PCA(word_embedding) -> Any
+    - PCA(word_embedding) -> void
 
 Sources:
     - To generate regex expressions: https://regex101.com/
@@ -31,18 +32,17 @@ Sources:
     - Tokenize each sentence: https://medium.com/@saivenkat_/implementing-countvectorizer-from-scratch-in-python-exclusive-d6d8063ace22
     - CountVectorizer: https://spotintelligence.com/2022/12/20/bag-of-words-python/#:~:text=Scikit%2DLearn-,In%20Python%2C%20you%20can%20implement%20a%20bag%2Dof%2Dwords,CountVectorizer%20class%20in%20the%20sklearn.
     - Idea for one hot encode function: https://pytorch.org/tutorials/intermediate/char_rnn_classification_tutorial.html
+    - Visualizing using PCA: https://www.geeksforgeeks.org/continuous-bag-of-words-cbow-in-nlp/ 
 """
-import string
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim  # to use the Optimizer class to optimize code
-import numpy as np
+import torch.optim as optim
 import pandas as pd
-import matplotlib as plt
+import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.model_selection import train_test_split
-
+from sklearn.decomposition import PCA
 
 # ====================== PREPROCESSING THE DATA ======================
 
@@ -59,8 +59,10 @@ def process_data(data):
     """
     # All special characters are defined using regex (regular expressions)
     special_char = r'[^\w\s]'
-    data = data.replace(special_char, '', regex=True)  # removes special characters from the 'Line' column
-    data = data.str.lower()  # lowercases all letters within the 'Line' column
+    # Removes special characters from the 'Line' column
+    data = data.replace(special_char, '', regex=True)
+    # Lowercases all letters within the 'Line' column 
+    data = data.str.lower()  
     text = data.values
 
     # Regex expression that ensures that we only get single characters or words, NO numbers
@@ -70,19 +72,10 @@ def process_data(data):
     vector = CountVectorizer(token_pattern=token_pattern)
     vector.fit(text)
 
-    # TESTING - DELETE LATER
-    """ print(vector.vocabulary_.get('we'))
-    print(vector.vocabulary_.get('i'))
-    print(vector.vocabulary_.get('1'))
-    print(vector.vocabulary_.get('iv'))
-    print(vector.vocabulary_.get('act')) """
-
     return text, vector.vocabulary_
-
 
 # ====================== GENERATING TRAINING DATA FOR MODEL ======================
 
-# NOTE: I CHANGED THIS CODE SO I COULD WORK ON CONSTRUCTING THE ARCHITECTURE FOR CBOW
 def generate_training_data(text, window_size=2):
     """
     Generates the training data for the CBOW algorithm.
@@ -96,26 +89,26 @@ def generate_training_data(text, window_size=2):
     """
     training_data = []
     for sentence in text:
-        words = sentence.split()  # split words in processed text
+        words = sentence.split()  # Splits words in processed text
         for i in range(len(words)):
-            context_words_before = words[max(0, i - window_size): i]  # getting the context words before the target
-            # word at i
+            # Getting the context words before the target word at i
+            context_words_before = words[max(0, i - window_size): i]  
+            # Getting the context words after the target word at i
             context_words_after = words[i + 1: min(len(words),
-                                                   i + window_size + 1)]  # getting the context words after the target word at i
+                                                   i + window_size + 1)]  
             context = context_words_before + context_words_after
             target = words[i]
-            training_data.append((context, target))  # appending the training sample to the training data
+            # Appending the training sample to the training data
+            training_data.append((context, target)) 
     return training_data
-
 
 # ====================== CBOW MODEL ======================
 
 class CBOW(nn.Module):
     """
     This class implements the CBOW model. It inherits all attributes from its base class, the Module class.
-    It creates the embedding and MLP layers, along with the ReLU and LogSoftmax activiation functions.
+    It creates the embedding and MLP layers, along with the ReLU activiation function.
     """
-
     def __init__(self, vocab_size, hidden_size, embedding_dim=100):
         super(CBOW, self).__init__()
 
@@ -123,9 +116,9 @@ class CBOW(nn.Module):
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
 
         # Multi-Layer Perceptron (MLP)
-        self.hidden = nn.Linear(embedding_dim, hidden_size)  # Linear = fully connected layer
+        self.hidden = nn.Linear(embedding_dim, hidden_size) # Linear = fully connected layer
         self.relu = nn.ReLU()
-        self.output = nn.Linear(hidden_size, vocab_size)  # Linear = fully connected layer
+        self.output = nn.Linear(hidden_size, vocab_size) # Linear = fully connected layer
 
     # Prediction Function
     def forward(self, x):
@@ -138,104 +131,83 @@ class CBOW(nn.Module):
         Returns:
             Any: the log probability of the model (i.e., the prediction).
         """
-        embeddings = self.embedding(x)  # 4D result vector (batch_size, seq_len, vocab_size, dim_size)
-        # print("embeddings shape: ", embeddings.shape)
-
-        average_embeddings = torch.mean(embeddings, dim=2)  # get average embeddings across vocabulary
-        # print("average shape: ", average_embeddings.shape)
-
+        # 4D result vector (batch_size, seq_len, vocab_size, dim_size)
+        embeddings = self.embedding(x)  
+        # Geting average embeddings across vocabulary
+        average_embeddings = torch.mean(embeddings, dim=2)  
         hidden_output = self.relu(self.hidden(average_embeddings))
-        # print("hidden shape: ", hidden_output.shape)
-
         output = self.output(hidden_output)
-        # print("output pre-softmax shape: ", output.shape)
-
-        # # Apply Softmax
-        # prob = F.log_softmax(output, dim=2)  # get softmax probabilities across vocabulary
-        # # print("probability shape: ", prob.shape)
-        #
-        # predicted_value = prob[0]
 
         return output[0]
-
 
 # ====================== TRAINING THE MODEL ======================
 
 # TRAINING FUNCTION, PASS THE CBOW MODEL INTO IT AND USE IT HERE
-def train(model, vocabulary, X, y, epochs=5, lr=0.001):
+def train(model, vocabulary, X, y, epochs=1000, lr=0.01, weight_decay=0.01):
     """
     Trains the model.
 
     Args:
-        model (Any): the CBOW model.
-        X (Tensor): the input values to the model.
-        y (Tensor): the corresponding values for the model.
-        --------------
-        :param y:
-        :param X:
-        :param model:
-        :param vocabulary:
-        :param lr:
-        :param epochs:
+        model (Any): The CBOW model.
+        X (Tensor): The input values to the model.
+        y (Tensor): The corresponding values for the model.
+        epochs (int, optional): The specified number of iterations to go through the training data. Defaults to 1000.
+        lr (float, optional): The learning rate to be applied to the SGD. Defaults to 0.01.
+        weight_decay(float, optional): L2 normalization. Defaults to 0.01.
     """
     list_total_loss = []
     list_epochs = []
-    optimizer = optim.SGD(model.parameters(), lr=lr)
+    optimizer = optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     for epoch in range(epochs):
-        # reset total loss for each iteration through training set
+        # Reset total loss for each iteration through training set
         total_loss = 0
 
-        # iterate through training data X
+        # Iterate through training data X
         for i in range(len(X)):
-            # convert X[i] and y[i] to one hot vectors (two lines)
-            if X[i]:
-                # transform contexts into one hot vectors of type int for embedding layer
+            if X[i]: # some training examples are empty -> []
+                
+                # Transform contexts into one hot vectors of type int for embedding layer
                 ith_context_vect = create_one_hot_vectors(X[i], vocabulary).int()
 
-                # transform labels into one hot vectors of type int for embedding layer
+                # Transform labels into one hot vectors of type int for embedding layer
                 y_label = one_hot_encode(y[i], vocabulary)
 
-                # get expected predictions
+                # Get expected predictions
                 prediction = model(ith_context_vect)
 
                 # Compute cross entropy loss
                 loss = F.cross_entropy(prediction, y_label)
                 total_loss += loss
 
-                # Backward step:
+                # Backward step
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
-        list_total_loss.append(total_loss)
-
+        # To plot the loss as a function of the epochs (visualizing the loss)
+        list_total_loss.append(total_loss.detach().numpy())
         list_epochs.append(epoch)
 
-    for i in range(len(list_total_loss)):
-        print(list_total_loss[i].item())
-
-    #plot_graph(list_epochs, list_total_loss)
+    plot_graph(list_epochs, list_total_loss)
     torch.save(model.state_dict(), 'final_model_weights.pth')
 
-
-
-def plot_graph(self, list_epochs: list, list_total_loss: list):
+def plot_graph(list_epochs: list, list_total_loss: list):
     """
     This function plots a graph that visualizes how the loss decreases over the epochs. That is, as the epochs increase, the loss decreases.
 
     Args:
-        self: a model object
-        list_epochs (list): list of epochs (iterations)
-        list_total_loss (list): list of total losses per epoch
+        list_epochs (list): The list of epochs (iterations).
+        list_total_loss (list): The list of total losses per epoch.
     """
+    print(type(list_epochs))
+    print(type(list_total_loss))
     fig, ax = plt.subplots()
     ax.plot(list_epochs, list_total_loss)
     ax.set_xlabel('Number of epochs')
     ax.set_ylabel('Total loss')
     ax.set_title('Loss Function as a Function of Epochs')
     plt.show()
-
 
 def word_to_index(word: str, vocab: dict):
     """
@@ -249,7 +221,6 @@ def word_to_index(word: str, vocab: dict):
         int: The corresponding index (value) of the word (key).
     """
     return vocab.get(word)
-
 
 def one_hot_encode(word, vocab: dict):
     """
@@ -266,7 +237,6 @@ def one_hot_encode(word, vocab: dict):
     tensor = torch.zeros(1, len(vocab))  # Pytorch assumes everything is in batches, so we set batch size = 1
     tensor[0][index] = 1
     return tensor
-
 
 def create_one_hot_vectors(input, vocab):
     """
@@ -286,10 +256,51 @@ def create_one_hot_vectors(input, vocab):
     context_tensor = torch.stack(context_vector)
     return context_tensor
 
+# ====================== VISUALIZING THE DATA ====================== 
+
+def plot_PCA(word_embeddings):
+
+    """
+    Plots and visualizes the similarities in words from the trained model. 
+    Uses my_PCA to perform PCA on the 2D word embeddings.
+    
+    Args:
+        word_embeddings (Any): The word embeddings from the model.
+    
+    """
+    # Perform PCA on the 2D word embeddings
+    word_embeddings_reduced = my_PCA(word_embeddings)
+
+    # All this plotting was referenced from geeksforgeeks.org
+    plt.figure(figsize=(8, 8))
+    plt.scatter(word_embeddings_reduced[:, 0], word_embeddings_reduced[:, 1], alpha=0.5)
+
+    for i, word in enumerate(vocab_list.keys()):
+        plt.annotate(word, xy=(word_embeddings_reduced[i, 0], word_embeddings_reduced[i, 1]), fontsize=8)
+
+    plt.xlabel('Principal Component 1')
+    plt.ylabel('Principal Component 2')
+    plt.title('PCA Visualization of Word Embeddings')
+    plt.grid(True)
+    plt.show()
+
+def my_PCA(word_embeddings):
+    """
+    Reduces the dimension of the word embeddings to 2.
+
+    Args:
+        word_embeddings (Any):  The word embeddings from the model.
+
+    Returns:
+        Any: The word embeddings reduced to 2 dimensions for visualization.
+    """
+    pca = PCA(n_components=2)  # Reduce to 2 dimensions for visualization
+    word_embeddings_reduced = pca.fit_transform(word_embeddings) # Transform our word embeddings to 2D
+    return word_embeddings_reduced
 
 # ====================== TESTING THE MODEL ======================
 
-# Reading file and creating pandas dataframe
+# Reading file and processing the data
 df = pd.read_csv('shakespeare.txt', sep='\t', header=None, names=['Line'])
 processed_text, vocab_list = process_data(df['Line'])
 
@@ -301,53 +312,24 @@ X = [data[0] for data in training_data]
 y = [data[1] for data in training_data]
 
 # Splitting training and testing data using the hold-out method (80% training data, 20% testing data)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.9999, random_state=42)
 
-# Get vocabulary size
+print('Length of X_train', len(X_train))
+
+# Getting the vocabulary size
 vocab_len = len(vocab_list)
 
-# Initialise model
+# Initializing the model
 CBOW_model = CBOW(vocab_size=vocab_len, hidden_size=1)
 
-# Train
+# Training the model
 train(model=CBOW_model, vocabulary=vocab_list, X=X_train, y=y_train)
 
-# print(type(X_train))
-# print(type(y_train))
-#
-# print('X_train first three contexts: ', X_train[2])
-# print('y_train first three labels: ', y_train[2])
-#
-# # TRAINING
-# context_vector = create_one_hot_vectors(X_train[2], vocab_list)
-#
-# print(len(X_train))
-# print(len(vocab_list))
-# print(context_vector.type)
-# print(context_vector.shape)
+# Loading the saved weights (parameters) of the trained CBOW model from a file
+CBOW_model.load_state_dict(torch.load('final_model_weights.pth'))
 
-# To do:
-# Figure out the expected shape of the layers
-# Ensure the output is expected
+# Extracting the word embeddings from the CBOW model and convert them to a NumPy array
+weights = CBOW_model.embedding.weight.detach().numpy()
 
-
-# Creating the CBOW model using the CBOW class
-# cbow = CBOW(vocab_size=len(vocab_list), hidden_size=128)
-# train(cbow, X_train, y_train)
-
-"""
-===============
-Changes made
-===============
-
-* Converted One-Hot Vectors to Ints before embedding
-
-why: 
-RuntimeError: Expected tensor for argument #1 'indices' to have one of the following scalar types: 
-Long, Int; but got torch.FloatTensor instead (while checking arguments for embedding)
-
-
-* Added dimension to average_embeddings
-why: needed to specify to calculate the average with respect to the vocabulary size. 
-
-"""
+# Plotting the PCA visualization of the word embeddings
+plot_PCA(weights)
