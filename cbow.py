@@ -310,7 +310,7 @@ X = [data[0] for data in training_data]
 y = [data[1] for data in training_data]
 
 # Splitting training and testing data using the hold-out method (80% training data, 20% testing data)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.9999, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Getting the vocabulary size
 vocab_len = len(vocab_list)
