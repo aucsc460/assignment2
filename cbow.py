@@ -301,7 +301,7 @@ def plot_PCA(word_embeddings):
     word_embeddings_reduced = my_PCA(word_embeddings)
 
     #All this plotting was referenced from geeksforgeeks.org
-    plt.figure(figsize=(8, 8))
+    plt.figure(figsize=(100, 100))
     plt.scatter(word_embeddings_reduced[:, 0], word_embeddings_reduced[:, 1], alpha=0.5)
 
     for i, word in enumerate(vocab_list.keys()):
